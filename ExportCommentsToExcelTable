@@ -1,0 +1,77 @@
+Sub ExportCommentsToExcelTable()
+'
+' ExportCommentsToExcelTable Macro
+'
+'
+'Export the comments in a Word document to Excel in the format of Chapter, Comment, Commentor, Page. Excel must be manually saved.
+
+    ' Dimensioning variables
+    Dim objExcel As Object
+    Dim objWorkbook As Object
+    Dim objWorksheet As Object
+    Dim objComment As Comment
+    Dim objHeading As Range
+    Dim i As Long
+    Dim pageNumber As String
+    Dim headingText As String
+    Dim highlightedText As String
+    
+    ' Create Excel application and workbook
+    Set objExcel = CreateObject("Excel.Application")
+    objExcel.Visible = True
+    Set objWorkbook = objExcel.Workbooks.Add
+    Set objWorksheet = objWorkbook.Sheets(1)
+    
+    ' Add headers to the Excel worksheet
+    objWorksheet.Cells(1, 1).Value = "Heading"
+    objWorksheet.Cells(1, 2).Value = "Comment"
+    objWorksheet.Cells(1, 3).Value = "Commenter"
+    objWorksheet.Cells(1, 4).Value = "Associated Text"
+    objWorksheet.Cells(1, 5).Value = "Page" 'Takes page number in heading, not page count
+    
+    i = 2 ' Start on the second row for data
+    
+    ' Loop through all comments in the document
+    For Each objComment In ActiveDocument.Comments
+        ' Get the heading associated with the comment
+        Set objHeading = objComment.Scope
+        headingText = "No Heading"
+        
+        ' Get the heading associated with the comment
+        Set objHeading = objComment.Scope.Paragraphs(1).Range
+        Do While Not objHeading Is Nothing
+            If objHeading.Style Like "Heading *" Then
+                headingText = objHeading.Text
+                ' Include the numbering of the heading if applicable
+                If objHeading.ListFormat.ListString <> "" Then
+                    headingText = objHeading.ListFormat.ListString & " " & Trim(headingText)
+                End If
+                Exit Do
+            End If
+            Set objHeading = objHeading.Previous
+        Loop
+        
+        ' Get the page number of the comment
+        On Error Resume Next
+        pageNumber = objComment.Scope.Information(wdActiveEndAdjustedPageNumber)
+        On Error GoTo 0
+        
+        ' Get the highlighted text (Story Text)
+        highlightedText = objComment.Scope.Text
+        
+        ' Write data to the Excel worksheet
+        objWorksheet.Cells(i, 1).Value = Trim(headingText)
+        objWorksheet.Cells(i, 2).Value = objComment.Range.Text
+        objWorksheet.Cells(i, 3).Value = objComment.Author
+        objWorksheet.Cells(i, 4).Value = highlightedText
+        objWorksheet.Cells(i, 5).Value = pageNumber
+        i = i + 1
+    Next objComment
+    
+    ' Autofit columns
+    objWorksheet.Columns("A:E").AutoFit
+    
+    ' Notify the user
+    MsgBox "Comments have been exported to Excel.", vbInformation
+End Sub
+
